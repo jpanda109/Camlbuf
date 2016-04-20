@@ -39,6 +39,9 @@ let print_tokens filename =
 let print_ast ast =
   Proto_debug.proto_to_string ast |> print_endline
 
+let compile_ast ast =
+  Generator.make_protofile ast
+
 let command =
   Command.basic
     ~summary:"evaluate an edl language file"
@@ -48,9 +51,12 @@ let command =
         +> anon ("filename" %: file)
     )
     (fun debug filename () -> 
-       match debug with
-       | true -> print_tokens filename; get_ast filename |> Proto_debug.proto_to_string |> print_endline
-       | false -> ()
+       let ast = get_ast filename in
+       begin
+         match debug with
+         | true -> print_tokens filename; Proto_debug.proto_to_string ast |> print_endline
+         | false -> ()
+       end; Generator.make_protofile ast |> print_endline
     )
 
 let () =
