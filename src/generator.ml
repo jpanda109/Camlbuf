@@ -6,6 +6,10 @@ let make_typedec {TypeDec.rule = r; ftype = ft; name = n; _ } =
     match ft with
     | "int32"  | "int64"   | "uint32"  | "uint64"   | "sint32" 
     | "sint64" | "fixed32" | "fixed64" | "sfixed32" | "sfixed64" -> "int"
+    | "string" -> "string"
+    | "bool" -> "bool"
+    | "bytes" -> "string"
+    | "double" | "float" -> "float"
     | t -> t
   in
   let optional = match r with
@@ -15,8 +19,19 @@ let make_typedec {TypeDec.rule = r; ftype = ft; name = n; _ } =
 
 let make_message {Message.typedecs = tds; Message.name = name} =
   let msg_contents = List.map ~f:make_typedec tds 
-                     |> String.concat ~sep:";\n    " in
-  Printf.sprintf "type %s =\n  { %s\n  }" name msg_contents
+                     |> List.map ~f:(fun s -> String.concat ["      ";s;";"])
+                     |> String.concat ~sep:"\n" in
+  let lines = [
+    Printf.sprintf "module rec %s : sig" name;
+    Printf.sprintf "  type t =";
+    "    {";
+    msg_contents;
+    Printf.sprintf "    }";
+    Printf.sprintf "end = %s" name
+  ] in String.concat ~sep:"\n" lines
 
 let make_protofile {Protofile.messages = msgs} =
-  List.map ~f:make_message msgs |> String.concat ~sep:"\n\n"
+  String.concat [
+    "open Core.Std\n\n";
+    List.map ~f:make_message msgs |> String.concat ~sep:"\n\n"
+  ]

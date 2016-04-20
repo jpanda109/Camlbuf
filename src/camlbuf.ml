@@ -44,19 +44,29 @@ let compile_ast ast =
 
 let command =
   Command.basic
-    ~summary:"evaluate an edl language file"
+    ~summary:"compile a protobuf file"
     Command.Spec.(
       empty
         +> flag "-d" no_arg ~doc:"Debug"
+        +> flag "-o" (optional file) ~doc:"Output file"
         +> anon ("filename" %: file)
     )
-    (fun debug filename () -> 
+    (fun debug ofname_opt filename () -> 
        let ast = get_ast filename in
+       let ofname = match ofname_opt with
+         | None ->
+           begin
+             match String.chop_suffix ~suffix:".proto" filename with
+             | None -> filename
+             | Some name -> name
+           end ^ ".ml"
+         | Some name -> name
+       in
        begin
          match debug with
          | true -> print_tokens filename; Proto_debug.proto_to_string ast |> print_endline
          | false -> ()
-       end; Generator.make_protofile ast |> print_endline
+       end; Out_channel.write_all ofname ~data:(Generator.make_protofile ast)
     )
 
 let () =
