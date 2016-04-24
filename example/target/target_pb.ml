@@ -67,6 +67,47 @@ let decode_varint bs =
   get_bytes bs
   |> List.foldi ~f:(fun i acc b -> acc + b lsl (i * 7)) ~init:0
 
+let encode_string tag s =
+  let key = (tag lsl 3) lor 2 in
+  let l = String.length s in
+  String.concat [Char.to_string (Char.of_int_exn key); Char.to_string (Char.of_int_exn l); s]
+
+let decode_string bs =
+  let l = 
+    match ByteStream.read bs with
+    | Some b -> Char.to_int b
+    | None -> raise (Decode_Error "need string length")
+  in
+  let rec get_bytes n =
+    if n > 0
+    then
+      match ByteStream.read bs with
+      | Some b -> b::get_bytes (n-1)
+      | None -> raise (Decode_Error "string length doesn't match number of bytes")
+    else []
+  in String.of_char_list (get_bytes l)
+
+let decode_sint32 bs =
+  let n = decode_varint bs in
+  (n lsl 1) lxor (n lsr 31)
+
+let decode_sint64 bs =
+  let n = decode_varint bs in
+  (n lsl 1) lxor (n lsr 64)
+
+let decode_uit32 = decode_varint
+
+let decode_uint64 = decode_varint
+
+let get_meta bs =
+  match ByteStream.read bs with
+  | Some b ->
+    let b = Char.to_int b in
+    let tag = b lsr 3 in
+    let wire = b land 0b111 in
+    Some (tag, wire)
+  | None -> None
+
 let decode bs =
   match ByteStream.read bs with
   | Some b ->
@@ -83,9 +124,12 @@ let decode bs =
 module rec A : sig
   type t =
     { a: int;
+      b: string
     }
 
   val a : t -> int
+
+  val b : t -> string
 
   val encode : t -> string
 
@@ -95,18 +139,26 @@ end = struct
 
   type t =
     { a: int;
+      b: string
     } 
 
   let a t = t.a
 
+  let b t = t.b
+
   let encode t =
     let encode_a = encode_varint 1 t.a in
-    encode_a
+    let encode_b = encode_string 2 t.b in
+    String.concat [encode_a; encode_b]
 
   let decode s =
     let bs = ByteStream.of_string s in
-    match decode bs with
-    | (1, v) -> { a = v }
-    | _ -> raise (Decode_Error "invalid tag")
+    let rec make_t t =
+      match get_meta bs with
+      | Some (1, 0) -> make_t { t with a = decode_varint bs }
+      | Some (2, 2) -> make_t { t with b = decode_string bs }
+      | None -> t
+      | _ -> raise (Decode_Error "invalid tag")
+    in make_t { a = 0; b = "" }
 
 end
