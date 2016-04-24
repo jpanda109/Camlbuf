@@ -30,14 +30,14 @@ end
 
 exception Decode_Error of string
 
-let to_binary i =  (* returns list of ints representing binary, msb on left *)
+let to_binary i =  (* returns list of ints representing binary, lsb on left *)
   let rec gather i =
     let cur = i mod 2 in
     let rest = i / 2 in
     match rest with
     | 0 -> [cur]
     | r -> cur::(gather r)
-  in gather i |> List.rev
+  in gather i
 
 let to_dec bin =
   let rec f i mult =
@@ -49,10 +49,16 @@ let to_dec bin =
 let encode_varint tag i =
   let key = (tag lsl 3) lor 0 in
   let rec split_chunks bin =
+    List.iter ~f:print_int bin; print_newline ();
     match List.split_n bin 7 with
-    | (chunk, []) -> [0::chunk]
-    | (chunk, rest) -> (1::chunk)::(split_chunks rest)
-  in key::(to_binary i |> split_chunks |> List.map ~f:to_dec) |> List.map ~f:Char.of_int_exn |> String.of_char_list
+    | (chunk, []) -> [0::List.rev chunk]
+    | (chunk, rest) -> (1::List.rev chunk)::(split_chunks rest)
+  in 
+  key::(to_binary i 
+        |> split_chunks 
+        |> List.map ~f:to_dec)
+  |> List.map ~f:Char.of_int_exn 
+  |> String.of_char_list
 
 let decode_varint bs =
   let rec left_pad n bin =  (* ayy lmao *)
@@ -68,8 +74,11 @@ let decode_varint bs =
       then (b land 0b01111111)::get_bytes bs
       else [b]
     | None -> raise (Decode_Error "incomplete varint")
-  in get_bytes bs |> List.rev |> List.map ~f:(Fn.compose (left_pad 7) to_binary) 
-     |> List.concat |> to_dec
+  in get_bytes bs 
+     |> List.rev 
+     |> List.map ~f:(Fn.compose (left_pad 7) (Fn.compose List.rev to_binary))
+     |> List.concat 
+     |> to_dec
 
 let decode bs =
   match ByteStream.read bs with
