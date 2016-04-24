@@ -37,7 +37,7 @@ let to_binary i =  (* returns list of ints representing binary, lsb on left *)
     match rest with
     | 0 -> [cur]
     | r -> cur::(gather r)
-  in gather i
+  in gather i |> List.rev
 
 let to_dec bin =
   let rec f i mult =
@@ -48,37 +48,24 @@ let to_dec bin =
 
 let encode_varint tag i =
   let key = (tag lsl 3) lor 0 in
-  let rec split_chunks bin =
-    List.iter ~f:print_int bin; print_newline ();
-    match List.split_n bin 7 with
-    | (chunk, []) -> [0::List.rev chunk]
-    | (chunk, rest) -> (1::List.rev chunk)::(split_chunks rest)
-  in 
-  key::(to_binary i 
-        |> split_chunks 
-        |> List.map ~f:to_dec)
-  |> List.map ~f:Char.of_int_exn 
-  |> String.of_char_list
+  let rec get_chunks n =
+    if n >= 128 
+    then (n mod 128) + 128 :: get_chunks (n / 128)
+    else [n]
+  in key::get_chunks i |> List.map ~f:Char.of_int_exn |> String.of_char_list
 
 let decode_varint bs =
-  let rec left_pad n bin =  (* ayy lmao *)
-    if List.length bin < n
-    then left_pad n (0::bin)
-    else bin
-  in
-  let rec get_bytes bs =  (*get relevant bits while removing msb *)
+  let rec get_bytes bs =
     match ByteStream.read bs with
-    | Some b -> 
+    | Some b ->
       let b = Char.to_int b in
-      if (b land 0b10000000) <> 0
-      then (b land 0b01111111)::get_bytes bs
+      if b >= 128
+      then b mod 128 :: get_bytes bs
       else [b]
     | None -> raise (Decode_Error "incomplete varint")
-  in get_bytes bs 
-     |> List.rev 
-     |> List.map ~f:(Fn.compose (left_pad 7) (Fn.compose List.rev to_binary))
-     |> List.concat 
-     |> to_dec
+  in 
+  get_bytes bs
+  |> List.foldi ~f:(fun i acc b -> acc + b lsl (i * 7)) ~init:0
 
 let decode bs =
   match ByteStream.read bs with
