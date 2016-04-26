@@ -87,14 +87,6 @@ let decode_string bs =
     else []
   in String.of_char_list (get_bytes l)
 
-let decode_sint32 bs =
-  let n = decode_varint bs in
-  (n lsl 1) lxor (n lsr 31)
-
-let decode_sint64 bs =
-  let n = decode_varint bs in
-  (n lsl 1) lxor (n lsr 64)
-
 let decode_uit32 = decode_varint
 
 let decode_uint64 = decode_varint
@@ -122,14 +114,96 @@ let decode bs =
   | None -> raise (Decode_Error "nothing left")
 
 module rec A : sig
+
+  module Enum : sig
+
+    type t =
+      | A
+      | B
+
+    val to_val : t -> int
+
+    val of_val : int -> t
+
+    val to_string : t -> string
+
+  end
+
   type t =
     { a: int;
-      b: string
+      b: string;
+      c: Enum.t;
     }
 
   val a : t -> int
 
   val b : t -> string
+
+  val c : t -> Enum.t
+
+  val encode : t -> string
+
+  val decode : string -> t
+
+end = struct
+
+  module Enum = struct
+    type t =
+      | A
+      | B
+
+    let to_val = function
+      | A -> 0
+      | B -> 1
+
+    let of_val = function
+      | 0 -> A
+      | 1 -> B
+      | _ -> A
+
+    let to_string = function
+      | A -> "A"
+      | B -> "B"
+  end
+
+  type t =
+    { a: int;
+      b: string;
+      c: Enum.t;
+    } 
+
+  let a t = t.a
+
+  let b t = t.b
+
+  let c t = t.c
+
+  let encode t =
+    let encode_a = encode_varint 1 t.a in
+    let encode_b = encode_string 2 t.b in
+    let encode_c = encode_varint 3 (Enum.to_val t.c) in
+    String.concat [encode_a; encode_b; encode_c]
+
+  let decode s =
+    let bs = ByteStream.of_string s in
+    let rec make_t t =
+      match get_meta bs with
+      | Some (1, 0) -> make_t { t with a = decode_uint64 bs }
+      | Some (2, 2) -> make_t { t with b = decode_string bs }
+      | Some (3, 0) -> make_t { t with c = Enum.of_val (decode_uint64 bs) }
+      | None -> t
+      | _ -> raise (Decode_Error "invalid tag")
+    in make_t { a = 0; b = ""; c = Enum.A }
+
+end
+
+and B : sig
+
+  type t =
+    { a: int;
+    }
+
+  val a : t -> int
 
   val encode : t -> string
 
@@ -139,26 +213,20 @@ end = struct
 
   type t =
     { a: int;
-      b: string
-    } 
+    }
 
   let a t = t.a
 
-  let b t = t.b
-
   let encode t =
     let encode_a = encode_varint 1 t.a in
-    let encode_b = encode_string 2 t.b in
-    String.concat [encode_a; encode_b]
+    String.concat [encode_a]
 
   let decode s =
     let bs = ByteStream.of_string s in
     let rec make_t t =
       match get_meta bs with
-      | Some (1, 0) -> make_t { t with a = decode_varint bs }
-      | Some (2, 2) -> make_t { t with b = decode_string bs }
-      | None -> t
+      | Some (1, 0) -> make_t { a = decode_uint64 bs }
       | _ -> raise (Decode_Error "invalid tag")
-    in make_t { a = 0; b = "" }
+    in make_t { a = 0 }
 
 end
