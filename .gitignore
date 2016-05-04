@@ -3,3 +3,4 @@ _build
 *.swp
 *.bin
 example.ml
+example_pb.ml

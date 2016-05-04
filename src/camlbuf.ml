@@ -59,7 +59,7 @@ let command =
              match String.chop_suffix ~suffix:".proto" filename with
              | None -> filename
              | Some name -> name
-           end ^ ".ml"
+           end ^ "_pb.ml"
          | Some name -> name
        in
        begin
