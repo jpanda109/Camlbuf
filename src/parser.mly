@@ -6,7 +6,7 @@ module Declaration = struct
   type t =
     | Message of Message.t
     | Enum of Enum.t
-    | Field of FieldDec.t
+    | Field of Field.t
 end
 %}
 %token LBRACE RBRACE LBRACK RBRACK LABRACK RABRACK SEMICOLON COMMA ASSIGN EOF
@@ -46,9 +46,9 @@ message:
 fielddec:
   rule_opt = option(rule); ftype = ID; name = ID; ASSIGN; tag = NUM; SEMICOLON;
     { let rule = match rule_opt with
-                 | None -> FieldDec.Singular
+                 | None -> Field.Singular
                  | Some r -> r
-      in FieldDec.({rule = rule; ftype = ftype; name = name; tag = tag})
+      in Field.({rule = rule; ftype = FieldType.of_string ftype; name = name; tag = tag})
     };
 
 enum:
@@ -59,6 +59,6 @@ enum_val:
   name = ID; ASSIGN; tag = NUM; SEMICOLON { (name, tag) };
 
 rule:
-  | SINGULAR { FieldDec.Singular }
-  | REPEATED { FieldDec.Repeated }
+  | SINGULAR { Field.Singular }
+  | REPEATED { Field.Repeated }
   ;

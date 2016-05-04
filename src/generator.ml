@@ -1,20 +1,22 @@
 open Core.Std
 open Ast
 
-let make_typedec {FieldDec.rule = r; ftype = ft; name = n; _ } =
+let make_typedec {Field.rule = r; ftype = ft; name = n; _ } =
   let oct =
-    match ft with
-    | "int32"  | "int64"   | "uint32"  | "uint64"   | "sint32" 
-    | "sint64" | "fixed32" | "fixed64" | "sfixed32" | "sfixed64" -> "int"
-    | "string" -> "string"
-    | "bool" -> "bool"
-    | "bytes" -> "string"
-    | "double" | "float" -> "float"
-    | t -> t
+    FieldType.(
+      match ft with
+      | Int32  | Int64   | UInt32  | UInt64   | SInt32 
+      | SInt64 | Fixed32 | Fixed64 | SFixed32 | SFixed64 -> "int"
+      | String -> "string"
+      | Bool -> "bool"
+      | Bytes -> "string"
+      | Double | Float -> "float"
+      | Custom t -> t
+    )
   in
   let optional = match r with
-    | FieldDec.Singular -> "option"
-    | FieldDec.Repeated -> "list" in
+    | Field.Singular -> "option"
+    | Field.Repeated -> "list" in
   Printf.sprintf "%s: %s %s" n oct optional
 
 let make_message {Message.fielddecs = tds; Message.name = name} =

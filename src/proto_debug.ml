@@ -1,12 +1,12 @@
 open Core.Std
 open Ast
 
-let td_to_string { FieldDec.rule = rule; ftype = ftype; name = name; tag = tag } =
+let td_to_string { Field.rule = rule; ftype = ftype; name = name; tag = tag } =
   let rule_string = match rule with
-    | FieldDec.Singular -> "singular"
-    | FieldDec.Repeated -> "repeated"
+    | Field.Singular -> "singular"
+    | Field.Repeated -> "repeated"
   in
-  Printf.sprintf "Decl { rule: %s; ftype: %s; name: %s; tag: %d }" rule_string ftype name tag
+  Printf.sprintf "Decl { rule: %s; ftype: %s; name: %s; tag: %d }" rule_string (FieldType.to_string ftype) name tag
 
 let enum_to_string { Enum.name = name; vals = vals } =
   let vals_string = String.Map.keys vals |> String.concat ~sep:", " in
