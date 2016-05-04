@@ -1,6 +1,6 @@
 open Core.Std
 
-module rec TypeDec : sig
+module rec FieldDec : sig
   type rule =
     | Singular
     | Repeated
@@ -11,14 +11,23 @@ module rec TypeDec : sig
       name: string;
       tag: int
     }
-end = TypeDec
+end = FieldDec
 
 and Message : sig
   type t =
     { name: string;
-      typedecs: TypeDec.t list
+      fielddecs: FieldDec.t list;
+      messages: Message.t list;
+      enums: Enum.t list;
     }
 end = Message
+
+and Enum : sig
+  type t =
+    { name: string;
+      vals: int String.Map.t
+    }
+end = Enum
 
 and Protofile : sig
   type t =

@@ -1,16 +1,31 @@
 open Core.Std
 open Ast
 
-let td_to_string { TypeDec.rule = rule; ftype = ftype; name = name; tag = tag } =
+let td_to_string { FieldDec.rule = rule; ftype = ftype; name = name; tag = tag } =
   let rule_string = match rule with
-    | TypeDec.Singular -> "singular"
-    | TypeDec.Repeated -> "repeated"
+    | FieldDec.Singular -> "singular"
+    | FieldDec.Repeated -> "repeated"
   in
   Printf.sprintf "Decl { rule: %s; ftype: %s; name: %s; tag: %d }" rule_string ftype name tag
 
-let msg_to_string { Message.name = name; typedecs = tdecs } =
+let enum_to_string { Enum.name = name; vals = vals } =
+  let vals_string = String.Map.keys vals |> String.concat ~sep:", " in
+  Printf.sprintf
+    "Enum { name: %s; vals: %s }"
+    name vals_string
+
+let rec msg_to_string 
+    { Message.name = name; 
+      fielddecs = tdecs; 
+      messages = msgs; 
+      enums = enums 
+    } =
   let tdecs_string = List.map ~f:td_to_string tdecs |> String.concat ~sep:", " in
-  Printf.sprintf "Message { name: %s; typedecs: %s }" name tdecs_string
+  let msgs_string = List.map ~f:msg_to_string msgs |> String.concat ~sep:", " in
+  let enums_string = List.map ~f:enum_to_string enums |> String.concat ~sep:", " in
+  Printf.sprintf 
+    "Message { name: %s; fielddecs: %s; messages: %s; enums: %s }" 
+    name tdecs_string msgs_string enums_string
 
 let proto_to_string { Protofile.messages = msgs } =
   let msgs_string = List.map ~f:msg_to_string msgs |> String.concat ~sep:", " in

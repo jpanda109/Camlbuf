@@ -1,7 +1,7 @@
 open Core.Std
 open Ast
 
-let make_typedec {TypeDec.rule = r; ftype = ft; name = n; _ } =
+let make_typedec {FieldDec.rule = r; ftype = ft; name = n; _ } =
   let oct =
     match ft with
     | "int32"  | "int64"   | "uint32"  | "uint64"   | "sint32" 
@@ -13,11 +13,11 @@ let make_typedec {TypeDec.rule = r; ftype = ft; name = n; _ } =
     | t -> t
   in
   let optional = match r with
-    | TypeDec.Singular -> "option"
-    | TypeDec.Repeated -> "list" in
+    | FieldDec.Singular -> "option"
+    | FieldDec.Repeated -> "list" in
   Printf.sprintf "%s: %s %s" n oct optional
 
-let make_message {Message.typedecs = tds; Message.name = name} =
+let make_message {Message.fielddecs = tds; Message.name = name} =
   let msg_contents = List.map ~f:make_typedec tds 
                      |> List.map ~f:(fun s -> String.concat ["      ";s;";"])
                      |> String.concat ~sep:"\n" in
